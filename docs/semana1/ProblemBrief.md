@@ -11,7 +11,7 @@
 
 **Un pequeño ganadero tiene suficiente capacidad productiva para aumentar su hato, pero no cuenta con el capital necesario para adquirir más cabezas bovinas y no tiene acceso a crédito.**
 
-**Proponente:** [Nombre / usuario de GitHub]
+**Proponente:** [Santiago Sierra cano / Santiscano]
 
 ### Por qué elegimos este problema
 
@@ -34,7 +34,7 @@ Desde la perspectiva del curso, el caso presenta elementos donde blockchain podr
 | Propuesta | Proponente | Motivo del descarte |
 |---|---|---|
 | Impacto ambiental de las compras | Victor Manuel Zapata | Requería una coordinación comercial con varias cadenas de marcas y el registro de muchos productos y sus componentes, por lo que el esfuerzo era mayor. |
-| Financiamiento para incrementar producción de café/aguacate | Santiago Sierra Cano | Los cultivos y sus cosechas no son tan precisos y podrían generar pérdidas por factores externos como clima, químicos, bichos o pestes. Si la producción no aumentaba, el modelo podía ser muy volátil. |
+| Certificados digitales autenticos | JhonBenavides | Las personas y las organizaciones no pueden comprobar de manera rápida, independiente y confiable si un certificado digital es auténtico, está vigente y no ha sido modificado. |
 
 ### Cómo tomamos la decisión
 
@@ -52,7 +52,7 @@ Desde la perspectiva del curso, el caso presenta elementos donde blockchain podr
 
 ### HatoFi
 
-**HatoFi busca facilitar el acceso a capital para pequeños ganaderos que tienen capacidad productiva, pero no cuentan con recursos suficientes para aumentar su hato bovino.**
+**HatoFi busca facilitar el acceso a capital para pequeños ganaderos que tienen capacidad productiva, pero no cuentan con recursos suficientes para aumentar su hato bovino, al mismo tiempo brindar acceso en inversiones en el sector ganadero de manera transparente**
 
 ---
 
@@ -60,14 +60,14 @@ Desde la perspectiva del curso, el caso presenta elementos donde blockchain podr
 
 | Integrante | Usuario GitHub | Rol | Responsabilidad |
 |---|---|---|---|
-| [Nombre] | [@usuario] | Product / Project | Coordinación y seguimiento |
-| [Nombre] | [@usuario] | Blockchain | Arquitectura blockchain y Smart Contracts |
-| [Nombre] | [@usuario] | Development | Desarrollo de plataforma |
-| [Nombre] | [@usuario] | Business | Modelo de negocio y validación |
-| [Nombre] | [@usuario] | UX / Research | Investigación y experiencia de usuario |
+| [VictorZapata] | [@vzapatav] | Product / Project | Coordinación y seguimiento |
+| [SantiagoSierra] | [@Santiscano] | Blockchain | Arquitectura blockchain y Smart Contracts |
+| [JhonBenavides] | [@JhonMB] | Development | Desarrollo de plataforma |
+| [SantiagoSierra] | [@Santiscano] | Business | Modelo de negocio y validación |
+| [VictorZapata] | [@vzapatav] | UX / Research | Investigación y experiencia de usuario |
 
-**Responsable de entregas:** [Nombre]  
-**Canal de coordinación interna:** [Discord / WhatsApp / Slack / otro]
+**Responsable de entregas:** [VictorZapata]  
+**Canal de coordinación interna:** [Discord / WhatsApp]
 
 ---
 
@@ -202,7 +202,7 @@ La principal fricción es que existe capacidad productiva, pero el capital reque
 
 ### Oportunidad priorizada
 
-La oportunidad priorizada es crear un mecanismo que conecte el capital de inversionistas con la adquisición y ciclo productivo de bovinos administrados por pequeños ganaderos.
+La oportunidad priorizada es crear un mecanismo que conecte el capital de inversionistas con la adquisición y ciclo productivo de bovinos administrados por pequeños ganaderos por medio de Finanzas Decentralizadas.
 
 HatoFi plantea que cada bovino incorporado al mercado pueda tener una representación digital mediante un NFT y que la inversión y posterior distribución del resultado sean administradas mediante Smart Contracts.
 
