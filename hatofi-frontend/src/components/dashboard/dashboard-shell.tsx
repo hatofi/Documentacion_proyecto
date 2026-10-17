@@ -22,7 +22,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       try {
-        const session = localStorage.getItem("hatofi_session");
+        const session = sessionStorage.getItem("hatofi_session");
         if (session) {
           const parsed = JSON.parse(session);
           if (parsed.role) setRole(parsed.role);
@@ -30,8 +30,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           if (parsed.account) setUserAccount(parsed.account);
         } else {
           // cerrar sesión si no hay sesión almacenada
-          localStorage.removeItem("hatofi_session");
-          localStorage.removeItem("hatofi_access_token");
+          sessionStorage.removeItem("hatofi_session");
+          sessionStorage.removeItem("hatofi_access_token");
           router.push("/login");
         }
       } catch {
@@ -45,8 +45,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     try {
-      localStorage.removeItem("hatofi_session");
-      localStorage.removeItem("hatofi_access_token");
+      sessionStorage.removeItem("hatofi_session");
+      sessionStorage.removeItem("hatofi_access_token");
     } catch {}
     router.push("/login");
   };

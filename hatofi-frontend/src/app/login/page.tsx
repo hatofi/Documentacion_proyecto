@@ -22,7 +22,7 @@ export default function LoginPage() {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       try {
-        const rememberedLogin = localStorage.getItem(REMEMBERED_LOGIN_KEY);
+        const rememberedLogin = sessionStorage.getItem(REMEMBERED_LOGIN_KEY);
         if (!rememberedLogin) return;
 
         const { identifier: rememberedIdentifier, password: rememberedPassword } = JSON.parse(rememberedLogin) as {
@@ -33,7 +33,7 @@ export default function LoginPage() {
         if (rememberedIdentifier) setIdentifier(rememberedIdentifier);
         if (rememberedPassword) setPassword(rememberedPassword);
       } catch {
-        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+        sessionStorage.removeItem(REMEMBERED_LOGIN_KEY);
       }
     }, 0);
 
@@ -50,8 +50,8 @@ export default function LoginPage() {
       balance: "—",
     };
 
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem("hatofi_session", JSON.stringify(sessionData));
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    sessionStorage.setItem("hatofi_session", JSON.stringify(sessionData));
 
     router.push(isGanadero ? "/dashboard/my-farm" : "/dashboard/investment");
   };
@@ -63,12 +63,12 @@ export default function LoginPage() {
 
     try {
       if (rememberMe) {
-        localStorage.setItem(
+        sessionStorage.setItem(
           REMEMBERED_LOGIN_KEY,
           JSON.stringify({ identifier, password })
         );
       } else {
-        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+        sessionStorage.removeItem(REMEMBERED_LOGIN_KEY);
       }
 
       const loginResponse = await loginUser(identifier.trim(), password);

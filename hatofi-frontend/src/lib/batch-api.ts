@@ -57,7 +57,7 @@ async function getApiErrorMessage(response: Response, fallbackMessage: string): 
 }
 
 function getAccessToken(): string {
-  const token = window.localStorage.getItem("hatofi_access_token");
+  const token = window.sessionStorage.getItem("hatofi_access_token");
   if (!token) throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
   return token;
 }

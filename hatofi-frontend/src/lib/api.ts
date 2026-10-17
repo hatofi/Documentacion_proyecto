@@ -1,7 +1,7 @@
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 function authHeaders(): HeadersInit {
-  const rawSession = localStorage.getItem("hatofi_session");
+  const rawSession = sessionStorage.getItem("hatofi_session");
   if (!rawSession) return {};
   const session = JSON.parse(rawSession) as { access_token?: string };
   return session.access_token
