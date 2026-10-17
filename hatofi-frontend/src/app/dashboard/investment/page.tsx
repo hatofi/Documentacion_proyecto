@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { registerInvestment } from "@/lib/api";
+import { connectFreighter, investOnChain } from "@/lib/stellar";
 
 interface Lot {
   id: string;
+  batchId: number;
   code: string;
   name: string;
   place: string;
@@ -25,6 +28,7 @@ interface Lot {
 const lots: Lot[] = [
   {
     id: "rsr",
+    batchId: 1,
     code: "Lote #RSR-104",
     name: "Hacienda Santa Rosalía",
     place: "Montería, Córdoba",
@@ -43,6 +47,7 @@ const lots: Lot[] = [
   },
   {
     id: "mirador",
+    batchId: 2,
     code: "Lote #MFM-088",
     name: "Finca El Mirador",
     place: "Armenia, Quindío",
@@ -61,6 +66,7 @@ const lots: Lot[] = [
   },
   {
     id: "benito",
+    batchId: 3,
     code: "Lote #SB-202",
     name: "Hacienda San Benito",
     place: "Puerto López, Meta",
@@ -86,6 +92,7 @@ export default function InvestmentPage() {
   const [selectedLot, setSelectedLot] = useState<Lot>(lots[0]);
   const [amountUsdc, setAmountUsdc] = useState<number>(1000);
   const [dividendClaimed, setDividendClaimed] = useState(false);
+  const [investmentSubmitting, setInvestmentSubmitting] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -113,10 +120,36 @@ export default function InvestmentPage() {
     setSimulateModalOpen(true);
   };
 
-  const handleConfirmInvestment = (e: React.FormEvent) => {
+  const handleConfirmInvestment = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSimulateModalOpen(false);
-    showToast(`✓ Inversión de $${amountUsdc.toLocaleString()} USDC confirmada en ${selectedLot.name}. Tokens de sindicación emitidos.`);
+    if (investmentSubmitting) return;
+    setInvestmentSubmitting(true);
+    try {
+      const session = JSON.parse(
+        localStorage.getItem("hatofi_session") ?? "{}",
+      ) as { access_token?: string };
+      if (!session.access_token) {
+        throw new Error("Inicia sesión con una cuenta conectada al backend antes de invertir.");
+      }
+      const walletAddress = await connectFreighter();
+      const transactionHash = await investOnChain(
+        walletAddress,
+        selectedLot.batchId,
+        amountUsdc.toFixed(2),
+      );
+      await registerInvestment({
+        batchId: selectedLot.batchId,
+        amount: amountUsdc.toFixed(2),
+        walletAddress,
+        transactionHash,
+      });
+      setSimulateModalOpen(false);
+      showToast(`✓ Inversión confirmada en Stellar: ${transactionHash.slice(0, 12)}...`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "No se pudo completar la inversión.");
+    } finally {
+      setInvestmentSubmitting(false);
+    }
   };
 
   // Escuchar evento personalizado desde el sidebar para abrir simulador
@@ -468,9 +501,10 @@ export default function InvestmentPage() {
                 </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-[#063B32] hover:bg-[#042822] rounded-xl cursor-pointer shadow-md text-center"
+                  disabled={investmentSubmitting}
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-[#063B32] hover:bg-[#042822] rounded-xl cursor-pointer shadow-md text-center disabled:opacity-50 disabled:cursor-wait"
                 >
-                  Confirmar Inversión en Soroban
+                  {investmentSubmitting ? "Esperando confirmación..." : "Confirmar Inversión en Soroban"}
                 </button>
               </div>
             </form>
