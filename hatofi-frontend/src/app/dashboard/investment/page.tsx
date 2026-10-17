@@ -1,478 +1,233 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useEffect } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { getOpenBatches, type Batch, type BatchCategory } from "@/lib/batch-api";
 
-interface Lot {
-  id: string;
-  code: string;
-  name: string;
-  place: string;
-  apy: string;
-  apyNumber: number;
-  breed: string;
-  term: string;
-  termMonths: number;
-  cattle: string;
-  raised: string;
-  target: string;
-  targetUsdc: number;
-  progress: number;
-  image: string;
-  minInvestment: number;
-}
-
-const lots: Lot[] = [
-  {
-    id: "rsr",
-    code: "Lote #RSR-104",
-    name: "Hacienda Santa Rosalía",
-    place: "Montería, Córdoba",
-    apy: "15.2%",
-    apyNumber: 15.2,
-    breed: "Brahman Rojo",
-    term: "8 Meses",
-    termMonths: 8,
-    cattle: "50 Novillos",
-    raised: "$41,000 USDC",
-    target: "$50,000 USDC",
-    targetUsdc: 50000,
-    progress: 82,
-    minInvestment: 100,
-    image: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "mirador",
-    code: "Lote #MFM-088",
-    name: "Finca El Mirador",
-    place: "Armenia, Quindío",
-    apy: "14.8%",
-    apyNumber: 14.8,
-    breed: "Brangus",
-    term: "10 Meses",
-    termMonths: 10,
-    cattle: "65 Novillos",
-    raised: "$32,000 USDC",
-    target: "$50,000 USDC",
-    targetUsdc: 50000,
-    progress: 64,
-    minInvestment: 100,
-    image: "https://images.unsplash.com/photo-1551884831-bbf3cdc6469e?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "benito",
-    code: "Lote #SB-202",
-    name: "Hacienda San Benito",
-    place: "Puerto López, Meta",
-    apy: "16.0%",
-    apyNumber: 16.0,
-    breed: "Exportación F1",
-    term: "6 Meses",
-    termMonths: 6,
-    cattle: "70 Reses",
-    raised: "$76,000 USDC",
-    target: "$80,000 USDC",
-    targetUsdc: 80000,
-    progress: 95,
-    minInvestment: 250,
-    image: "https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?auto=format&fit=crop&w=800&q=80",
-  },
+const batchImages = [
+  "https://images.unsplash.com/photo-1545468259-7fa9a2e7a7f1?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=900&q=80",
 ];
 
-export default function InvestmentPage() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [toastMessage, setToastMessage] = useState("");
-  const [simulateModalOpen, setSimulateModalOpen] = useState(false);
-  const [selectedLot, setSelectedLot] = useState<Lot>(lots[0]);
-  const [amountUsdc, setAmountUsdc] = useState<number>(1000);
-  const [dividendClaimed, setDividendClaimed] = useState(false);
+const categoryLabels: Record<BatchCategory, string> = {
+  CEBA_INTENSIVA: "Ceba intensiva",
+  CRIA_LEVANTE: "Cría & levante",
+};
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), 4000);
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(value);
+}
+
+function getBatchImage(batchId: number) {
+  return batchImages[batchId % batchImages.length];
+}
+
+function getMinimumInvestment(batch: Batch) {
+  return Math.max(batch.price_per_share, 100);
+}
+
+type MetricIconName = "target" | "trend" | "batches" | "dividends";
+
+function MetricIcon({ name }: { name: MetricIconName }) {
+  const paths = {
+    target: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <circle cx="12" cy="12" r="4.5" />
+        <circle cx="12" cy="12" r="1" />
+      </>
+    ),
+    trend: (
+      <>
+        <path d="M4 16 9 11l3 3 6-7" />
+        <path d="M14 7h4v4" />
+      </>
+    ),
+    batches: (
+      <>
+        <rect x="4" y="4" width="16" height="5" rx="1" />
+        <rect x="4" y="11" width="16" height="5" rx="1" />
+        <path d="M8 18h8" />
+      </>
+    ),
+    dividends: (
+      <>
+        <rect x="3.5" y="5" width="17" height="14" rx="2" />
+        <path d="M3.5 9h17M7 14h4" />
+      </>
+    ),
   };
-
-  const calculateReturn = () => {
-    const apy = selectedLot.apyNumber / 100;
-    const months = selectedLot.termMonths;
-    const rawGain = amountUsdc * apy * (months / 12);
-    const total = amountUsdc + rawGain;
-    const kgBeef = Math.round(amountUsdc / 2.28);
-    return {
-      gain: rawGain.toFixed(2),
-      total: total.toFixed(2),
-      kgBeef,
-    };
-  };
-
-  const simulation = calculateReturn();
-
-  const handleOpenInvestModal = (lot: Lot) => {
-    setSelectedLot(lot);
-    setAmountUsdc(lot.minInvestment * 5);
-    setSimulateModalOpen(true);
-  };
-
-  const handleConfirmInvestment = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSimulateModalOpen(false);
-    showToast(`✓ Inversión de $${amountUsdc.toLocaleString()} USDC confirmada en ${selectedLot.name}. Tokens de sindicación emitidos.`);
-  };
-
-  // Escuchar evento personalizado desde el sidebar para abrir simulador
-  useEffect(() => {
-    const handleOpenSim = () => setSimulateModalOpen(true);
-    window.addEventListener("open-simulate-modal", handleOpenSim);
-    return () => window.removeEventListener("open-simulate-modal", handleOpenSim);
-  }, []);
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      
-      {/* Toast Notification */}
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      {paths[name]}
+    </svg>
+  );
+}
+
+export default function InvestmentPage() {
+  const [selectedCategory, setSelectedCategory] = useState<BatchCategory | "ALL">("ALL");
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [amountUsdc, setAmountUsdc] = useState(1000);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) {
+        setLoading(true);
+        setError("");
+      }
+    });
+    getOpenBatches(selectedCategory === "ALL" ? undefined : selectedCategory)
+      .then((loadedBatches) => {
+        if (active) setBatches(loadedBatches);
+      })
+      .catch((loadError) => {
+        if (active) {
+          setBatches([]);
+          setError(loadError instanceof Error ? loadError.message : "No fue posible cargar los lotes disponibles.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory]);
+
+  const totalTarget = useMemo(
+    () => batches.reduce((total, batch) => total + batch.target_amount, 0),
+    [batches],
+  );
+  const averageRoi = batches.length
+    ? batches.reduce((total, batch) => total + batch.estimated_roi_percentage, 0) / batches.length
+    : 0;
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(""), 4000);
+  };
+
+  const openInvestment = (batch: Batch) => {
+    setSelectedBatch(batch);
+    setAmountUsdc(getMinimumInvestment(batch));
+  };
+
+  const simulation = selectedBatch
+    ? amountUsdc * (selectedBatch.estimated_roi_percentage / 100) * (selectedBatch.duration_months / 12)
+    : 0;
+
+  const confirmInvestment = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedBatch) return;
+    setSelectedBatch(null);
+    showToast(`Inversión de $${formatMoney(amountUsdc)} USDC confirmada en ${selectedBatch.title}.`);
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-6">
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#006244] text-white px-5 py-3 rounded-xl shadow-xl text-xs font-bold flex items-center gap-3 animate-fade-in border border-[#10B981]">
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage("")} className="text-white hover:text-emerald-200 cursor-pointer">
-            ✕
-          </button>
+        <div className="fixed bottom-6 right-6 z-50 rounded-xl border border-[#10B981] bg-[#006244] px-5 py-3 text-xs font-bold text-white shadow-xl">
+          {toastMessage}
         </div>
       )}
 
-      {/* Top Header Limpio */}
-      <div className="flex flex-col gap-1.5 max-w-3xl">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0D1F1B] tracking-tight">
-          Mercado Primario de Inversión Pecuaria RWA
-        </h1>
-        <p className="text-xs sm:text-sm text-[#5D6B66] leading-relaxed">
-          Financia lotes certificados de terneros de ceba con garantías prendarias verificadas por ICA y liquidación autónoma mediante contratos inteligentes en Stellar Soroban.
-        </p>
+      <div>
+        <span className="text-xs font-bold uppercase tracking-wide text-[#006244]">Mercado de inversión</span>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#0D1F1B] sm:text-3xl">Lotes disponibles para invertir</h1>
+        <p className="mt-2 max-w-3xl text-sm text-[#5D6B66]">Consulta lotes abiertos a financiación y elige una originación pecuaria según su categoría.</p>
       </div>
 
-      {/* KPI Bento Row (4 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Card 1: Capital Total Financiado */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8E5] shadow-sm flex flex-col justify-between min-h-[170px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#62736C]">Capital Total Sindicado</span>
-            <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] flex items-center justify-center text-[#006244]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="8" />
-                <line x1="12" x2="12" y1="8" y2="16" />
-                <path d="M14.5 10a2.5 2.5 0 0 0-5 0c0 3 5 1.5 5 4.5a2.5 2.5 0 0 1-5 0" />
-              </svg>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: "Capital objetivo", value: `$${formatMoney(totalTarget)} USDC`, detail: "de los lotes abiertos", icon: "target" as const },
+          { label: "Rendimiento promedio", value: `${averageRoi.toFixed(2)}%`, detail: "ROI estimado", icon: "trend" as const },
+          { label: "Lotes disponibles", value: String(batches.length), detail: "abiertos a inversión", icon: "batches" as const },
+          { label: "Dividendos disponibles", value: "$0.00", unit: "USDC", detail: "Distribución mensual de dividendos", icon: "dividends" as const, action: true },
+        ].map(({ label, value, unit, detail, icon, action }) => (
+          <div key={label} className="flex min-h-[166px] flex-col rounded-2xl border border-[#E2E8E5] bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <p className="text-xs font-bold text-[#62736C]">{label}</p>
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#EAF4F0] text-[#006244]">
+                <MetricIcon name={icon} />
+              </span>
             </div>
-          </div>
-          <div className="my-2">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#0D1F1B] tracking-tight">
-              $184,500 <span className="text-xs font-medium text-gray-500">USDC</span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-[#059669] font-bold">
-              <span>▲</span>
-              <span>+18.4% vs mes anterior</span>
-            </div>
-          </div>
-          <span className="text-[11px] text-gray-400 font-medium mt-auto">
-            Garantizado 100% con prenda agraria
-          </span>
-        </div>
-
-        {/* Card 2: Rendimiento Promedio (APY) */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8E5] shadow-sm flex flex-col justify-between min-h-[170px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#62736C]">Rendimiento Promedio</span>
-            <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] flex items-center justify-center text-[#006244]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
-              </svg>
-            </div>
-          </div>
-          <div className="my-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#006244] tracking-tight">15.3%</span>
-              <span className="text-xs text-gray-500 font-bold">APY</span>
-            </div>
-            <span className="text-xs text-[#059669] font-semibold mt-1 block">
-              Ganancia diaria de peso (GDP)
-            </span>
-          </div>
-          <span className="text-[11px] text-gray-400 font-medium mt-auto">
-            Tasa neta libre de intermediarios
-          </span>
-        </div>
-
-        {/* Card 3: Lotes Activos */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8E5] shadow-sm flex flex-col justify-between min-h-[170px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#62736C]">Lotes Activos en Ceba</span>
-            <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] flex items-center justify-center text-[#006244]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-            </div>
-          </div>
-          <div className="my-2">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#0D1F1B] tracking-tight">
-              3 <span className="text-xs font-medium text-gray-500">Lotes</span>
-            </div>
-            <span className="text-xs text-gray-500 mt-1 block">185 Novillos en pastoreo activo</span>
-          </div>
-          <span className="text-[11px] text-[#059669] font-bold mt-auto">
-            ✓ Aretes RFID verificados
-          </span>
-        </div>
-
-        {/* Card 4: Dividendos por Reclamar */}
-        <div className="p-5 rounded-2xl bg-white border border-[#E2E8E5] shadow-sm flex flex-col justify-between min-h-[170px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#62736C]">Dividendos Disponibles</span>
-            <div className="w-8 h-8 rounded-lg bg-[#E8F3EE] flex items-center justify-center text-[#006244]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <line x1="2" x2="22" y1="10" y2="10" />
-              </svg>
-            </div>
-          </div>
-          <div className="my-2">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#006244] tracking-tight">
-              {dividendClaimed ? "$0.00" : "$1,850.50"} <span className="text-xs font-medium text-gray-500">USDC</span>
-            </div>
-            <span className="text-[11px] text-gray-500 mt-1 block">
-              {dividendClaimed ? "✓ Acreditado en billetera" : "Dispersión mensual de Lote #RSR-104"}
-            </span>
-          </div>
-          <button
-            type="button"
-            disabled={dividendClaimed}
-            onClick={() => {
-              setDividendClaimed(true);
-              showToast("✓ $1,850.50 USDC acreditados en tu cuenta Stellar Soroban.");
-            }}
-            className="w-full mt-auto py-2 px-3 bg-[#063B32] hover:bg-[#042822] text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-          >
-            {dividendClaimed ? "Reclamado ✓" : "Reclamar Dividendos"}
-          </button>
-        </div>
-      </div>
-
-      {/* Lotes Disponibles Section */}
-      <div className="bg-white rounded-2xl border border-[#E2E8E5] shadow-sm p-6 sm:p-7 flex flex-col gap-6">
-        
-        {/* Section Header with Category Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EEF2F0]">
-          <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-[#0D1F1B]">
-              Lotes Disponibles para Financiación
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Originaciones pecuarias abiertas para sindicación con trazabilidad de aretes oficial.
+            <p className="mt-3 text-3xl font-extrabold text-[#006244]">
+              {value} {unit && <span className="text-xs font-medium text-[#62736C]">{unit}</span>}
             </p>
+            <p className="mt-1 text-xs text-gray-500">{detail}</p>
+            {action && (
+              <button
+                type="button"
+                disabled
+                className="mt-auto w-full cursor-not-allowed rounded-xl bg-[#063B32] px-4 py-2.5 text-sm font-semibold text-white opacity-90"
+              >
+                Reclamar Dividendos
+              </button>
+            )}
           </div>
-
-          <div className="overflow-x-auto max-w-full pb-1 sm:pb-0">
-            <div className="inline-flex p-1 rounded-xl bg-[#F0F4F2] text-xs font-bold shrink-0 gap-1 text-[#62736C]">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  selectedCategory === "all" ? "bg-white text-[#006244] shadow-sm" : "hover:text-[#0D1F1B]"
-                }`}
-              >
-                Todos los Lotes
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("ceba")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  selectedCategory === "ceba" ? "bg-white text-[#006244] shadow-sm" : "hover:text-[#0D1F1B]"
-                }`}
-              >
-                Ceba Intensiva
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("cria")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                  selectedCategory === "cria" ? "bg-white text-[#006244] shadow-sm" : "hover:text-[#0D1F1B]"
-                }`}
-              >
-                Cría & Levante
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Grid de Tarjetas de Lotes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {lots.map((lot) => (
-            <article
-              key={lot.id}
-              className="rounded-2xl border border-[#E2E8E5] bg-white overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              {/* Imagen con Badges Superpuestos */}
-              <div className="relative h-48 w-full bg-gray-900">
-                <Image
-                  src={lot.image}
-                  alt={lot.name}
-                  fill
-                  className="object-cover opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                
-                {/* Badges superiores */}
-                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[11px] font-bold">
-                  {lot.code}
-                </div>
-                <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-[#5BCB35] text-[#063B32] text-xs font-black shadow-md">
-                  {lot.apy} APY
-                </div>
-
-                {/* Info inferior en la foto */}
-                <div className="absolute bottom-3 left-3 text-white">
-                  <h3 className="font-extrabold text-sm sm:text-base leading-tight">{lot.name}</h3>
-                  <span className="text-[11px] text-[#A7F3D0] flex items-center gap-1 mt-0.5">
-                    📍 {lot.place}
-                  </span>
-                </div>
-              </div>
-
-              {/* Detalles del Lote */}
-              <div className="p-5 flex flex-col gap-4 flex-1 justify-between">
-                
-                {/* 3 Métricas del lote */}
-                <div className="grid grid-cols-3 gap-2 p-2.5 bg-[#F8FAF9] rounded-xl text-center text-xs border border-[#EEF2F0]">
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">Raza</span>
-                    <strong className="text-[#0D1F1B] font-bold truncate block">{lot.breed}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">Plazo</span>
-                    <strong className="text-[#0D1F1B] font-bold block">{lot.term}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">Población</span>
-                    <strong className="text-[#0D1F1B] font-bold block">{lot.cattle}</strong>
-                  </div>
-                </div>
-
-                {/* Barra de Fondeo */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-gray-600">Recaudado: <strong className="text-gray-900">{lot.raised}</strong></span>
-                    <span className="text-[#006244] font-bold">{lot.progress}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className="h-full bg-[#10B981] rounded-full"
-                      style={{ width: `${lot.progress}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-gray-500">
-                    <span>Meta: {lot.target}</span>
-                    <span className="font-semibold text-gray-700">Mín. ${lot.minInvestment} USDC</span>
-                  </div>
-                </div>
-
-                {/* Botón Invertir */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenInvestModal(lot)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#063B32] hover:bg-[#042822] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
-                  <span>Invertir en este Lote</span>
-                  <span>→</span>
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* MODAL SIMULAR / INVERTIR */}
-      {simulateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-200">
-            <div className="flex justify-between items-center mb-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-[#10B981] tracking-wider block">
-                  Bóveda Soroban • Fondeo Colectivo
-                </span>
-                <h3 className="text-lg font-extrabold text-[#0D1F1B]">{selectedLot.name}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSimulateModalOpen(false)}
-                className="text-gray-400 hover:text-gray-700 text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      <section className="rounded-2xl border border-[#E2E8E5] bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-[#E8EEEB] pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-extrabold text-[#0D1F1B]">Lotes disponibles para financiación</h2>
+            <p className="mt-1 text-sm text-[#5D6B66]">Los resultados se consultan directamente en la API.</p>
+          </div>
+          <div className="inline-flex gap-1 rounded-xl bg-[#F0F4F2] p-1 text-xs font-bold text-[#62736C]">
+            <button type="button" onClick={() => setSelectedCategory("ALL")} className={`rounded-lg px-3 py-2 ${selectedCategory === "ALL" ? "bg-white text-[#006244] shadow-sm" : ""}`}>Todos</button>
+            <button type="button" onClick={() => setSelectedCategory("CEBA_INTENSIVA")} className={`rounded-lg px-3 py-2 ${selectedCategory === "CEBA_INTENSIVA" ? "bg-white text-[#006244] shadow-sm" : ""}`}>Ceba intensiva</button>
+            <button type="button" onClick={() => setSelectedCategory("CRIA_LEVANTE")} className={`rounded-lg px-3 py-2 ${selectedCategory === "CRIA_LEVANTE" ? "bg-white text-[#006244] shadow-sm" : ""}`}>Cría & levante</button>
+          </div>
+        </div>
 
-            <div className="bg-[#F8FAF9] p-3 rounded-xl border border-gray-200 text-xs space-y-1.5 mb-4">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Código de Lote:</span>
-                <strong className="text-gray-900">{selectedLot.code}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Rendimiento Proyectado:</span>
-                <strong className="text-[#059669] font-bold">{selectedLot.apy} APY</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Duración del Ciclo:</span>
-                <strong className="text-gray-900">{selectedLot.term}</strong>
-              </div>
-            </div>
+        {error && <p className="mt-5 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{error}</p>}
+        {loading ? <p className="py-10 text-center text-sm text-[#62736C]">Cargando lotes disponibles...</p> : batches.length === 0 ? <p className="py-10 text-center text-sm text-[#62736C]">No hay lotes abiertos para esta categoría.</p> : (
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            {batches.map((batch) => {
+              const progress = batch.target_amount > 0 ? Math.min(100, Math.round((batch.collected_amount / batch.target_amount) * 100)) : 0;
+              return (
+                <article key={batch.id} className="overflow-hidden rounded-2xl border border-[#DDE7E2] bg-white shadow-sm">
+                  <div className="relative h-44 bg-cover bg-center" style={{ backgroundImage: `url(${getBatchImage(batch.id)})` }}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071B17] via-transparent to-transparent" />
+                    <span className="absolute left-4 top-4 rounded-lg bg-[#071B17]/80 px-3 py-1 text-xs font-bold text-white">{batch.code}</span>
+                    <span className="absolute right-4 top-4 rounded-lg bg-[#5BCB35] px-3 py-1 text-xs font-extrabold text-[#063B32]">{batch.estimated_roi_percentage}% ROI</span>
+                    <span className="absolute bottom-16 left-4 rounded-lg bg-white/90 px-3 py-1 text-xs font-bold text-[#063B32]">{categoryLabels[batch.category]}</span>
+                    <div className="absolute bottom-4 left-4 text-white"><h3 className="text-xl font-extrabold">{batch.title}</h3><p className="text-xs text-[#D6F5E1]">Lote abierto a inversión</p></div>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-3 rounded-xl bg-[#F5F8F6] p-3 text-center text-xs">
+                      <div><span className="block text-[#62736C]">Estado</span><strong className="mt-1 block text-[#0D1F1B]">En financiación</strong></div>
+                      <div><span className="block text-[#62736C]">Plazo</span><strong className="mt-1 block text-[#0D1F1B]">{batch.duration_months} meses</strong></div>
+                      <div><span className="block text-[#62736C]">Mínimo</span><strong className="mt-1 block text-[#0D1F1B]">${formatMoney(getMinimumInvestment(batch))}</strong></div>
+                    </div>
+                    <div className="mt-4 flex justify-between text-sm font-bold text-[#0D1F1B]"><span>Recaudado: ${formatMoney(batch.collected_amount)} USDC</span><span className="text-[#006244]">{progress}%</span></div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEEB]"><div className="h-full rounded-full bg-[#10B981]" style={{ width: `${progress}%` }} /></div>
+                    <p className="mt-2 text-xs text-[#62736C]">Meta: ${formatMoney(batch.target_amount)} USDC</p>
+                    <button type="button" onClick={() => openInvestment(batch)} className="mt-4 w-full rounded-xl bg-[#063B32] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#042822]">Invertir en este lote →</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-            <form onSubmit={handleConfirmInvestment} className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-gray-700">Monto a Depositar (USDC):</label>
-                  <span className="text-base font-extrabold text-[#006244]">${amountUsdc.toLocaleString()} USDC</span>
-                </div>
-                <input
-                  type="range"
-                  min={selectedLot.minInvestment}
-                  max={selectedLot.targetUsdc}
-                  step={50}
-                  value={amountUsdc}
-                  onChange={(e) => setAmountUsdc(Number(e.target.value))}
-                  className="w-full accent-[#006244] cursor-pointer"
-                />
-              </div>
-
-              {/* Resultado Simulado */}
-              <div className="p-3 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-[#065F46]">Rendimiento Estimado:</span>
-                  <strong className="text-[#065F46] font-bold">+${simulation.gain} USDC</strong>
-                </div>
-                <div className="flex justify-between font-bold text-[#0D1F1B] pt-1 border-t border-[#A7F3D0]/50">
-                  <span>Total al Vencimiento:</span>
-                  <span className="text-sm text-[#006244]">${simulation.total} USDC</span>
-                </div>
-                <div className="text-[11px] text-[#059669] pt-1">
-                  Equivalente aproximado a <strong>~{simulation.kgBeef} kg</strong> de carne en pie.
-                </div>
-              </div>
-
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSimulateModalOpen(false)}
-                  className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer text-center"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-[#063B32] hover:bg-[#042822] rounded-xl cursor-pointer shadow-md text-center"
-                >
-                  Confirmar Inversión en Soroban
-                </button>
-              </div>
+      {selectedBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between"><div><span className="text-[10px] font-bold uppercase tracking-wider text-[#10B981]">Fondeo colectivo</span><h2 className="text-lg font-extrabold text-[#0D1F1B]">{selectedBatch.title}</h2></div><button type="button" onClick={() => setSelectedBatch(null)} className="text-gray-400">✕</button></div>
+            <div className="mt-4 space-y-1 rounded-xl border border-gray-200 bg-[#F8FAF9] p-3 text-xs"><div className="flex justify-between"><span className="text-gray-500">Código:</span><strong>{selectedBatch.code}</strong></div><div className="flex justify-between"><span className="text-gray-500">ROI:</span><strong className="text-[#059669]">{selectedBatch.estimated_roi_percentage}%</strong></div><div className="flex justify-between"><span className="text-gray-500">Duración:</span><strong>{selectedBatch.duration_months} meses</strong></div></div>
+            <form onSubmit={confirmInvestment} className="mt-4 space-y-4">
+              <label className="block text-xs font-bold text-gray-700">Monto a depositar (USDC)<span className="float-right text-base text-[#006244]">${formatMoney(amountUsdc)}</span><input type="range" min={getMinimumInvestment(selectedBatch)} max={Math.max(selectedBatch.target_amount, getMinimumInvestment(selectedBatch))} step={getMinimumInvestment(selectedBatch)} value={amountUsdc} onChange={(event) => setAmountUsdc(Number(event.target.value))} className="mt-3 w-full accent-[#006244]" /></label>
+              <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-xs text-[#065F46]">Rendimiento estimado: <strong>+${formatMoney(simulation)} USDC</strong></div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setSelectedBatch(null)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="submit" className="rounded-xl bg-[#063B32] px-5 py-2.5 text-xs font-bold text-white">Confirmar inversión</button></div>
             </form>
           </div>
         </div>
