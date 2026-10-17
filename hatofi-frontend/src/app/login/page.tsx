@@ -3,7 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { loginUser, type AuthUser } from "@/lib/auth-api";
+
+const REMEMBERED_LOGIN_KEY = "hatofi_remembered_login";
+const ACCESS_TOKEN_KEY = "hatofi_access_token";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,40 +17,71 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLoginAs = (targetRole: "inversionista" | "ganadero", customName?: string) => {
-    setLoading(true);
-    const sessionData = targetRole === "ganadero" ? {
-      role: "ganadero",
-      name: customName || "Carlos Mendoza",
-      account: "Hacienda La Palmira • #84920-CO",
-      key: "GCU7...43GA",
-      balance: "$13,685.00 USD"
-    } : {
-      role: "inversionista",
-      name: customName || "Mauricio Echeverry",
-      account: "InverLatam Wealth • 0x8F2d",
-      key: "0x8F2d...c3Ea",
-      balance: "$14,250.00 USDC"
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      try {
+        const rememberedLogin = localStorage.getItem(REMEMBERED_LOGIN_KEY);
+        if (!rememberedLogin) return;
+
+        const { identifier: rememberedIdentifier, password: rememberedPassword } = JSON.parse(rememberedLogin) as {
+          identifier?: string;
+          password?: string;
+        };
+
+        if (rememberedIdentifier) setIdentifier(rememberedIdentifier);
+        if (rememberedPassword) setPassword(rememberedPassword);
+      } catch {
+        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const handleApiLogin = (user: AuthUser, accessToken: string) => {
+    const isGanadero = user.role.name === "user_farmer";
+    const sessionData = {
+      role: isGanadero ? "ganadero" : "inversionista",
+      name: user.full_name,
+      account: user.email,
+      key: `user-${user.id}`,
+      balance: "—",
     };
 
-    try {
-      localStorage.setItem("hatofi_session", JSON.stringify(sessionData));
-    } catch {}
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem("hatofi_session", JSON.stringify(sessionData));
 
-    setTimeout(() => {
-      if (targetRole === "ganadero") {
-        router.push("/dashboard/my-farm");
-      } else {
-        router.push("/dashboard/investment");
-      }
-    }, 500);
+    router.push(isGanadero ? "/dashboard/my-farm" : "/dashboard/investment");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const isGan = identifier.toLowerCase().includes("ica") || identifier.toLowerCase().includes("ganadero") || identifier.toLowerCase().includes("finca") || identifier.toLowerCase().includes("carlos");
-    handleLoginAs(isGan ? "ganadero" : "inversionista", identifier.split("@")[0] || identifier);
+    setError("");
+    setLoading(true);
+
+    try {
+      if (rememberMe) {
+        localStorage.setItem(
+          REMEMBERED_LOGIN_KEY,
+          JSON.stringify({ identifier, password })
+        );
+      } else {
+        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+      }
+
+      const loginResponse = await loginUser(identifier.trim(), password);
+      handleApiLogin(loginResponse.user, loginResponse.access_token);
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "No fue posible iniciar sesión."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -96,6 +132,15 @@ export default function LoginPage() {
             Plataforma institucional de inversión y financiamiento pecuario en activos del mundo
             real (RWA) respaldados por contratos inteligentes.
           </p>
+
+          {error && (
+            <div
+              role="alert"
+              className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700"
+            >
+              {error}
+            </div>
+          )}
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,8 +248,10 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => router.push("/dashboard/investment")}
-                className="py-2.5 px-3 bg-[#EEF2F6] hover:bg-[#E2E8F0] border border-[#D8E1E8] rounded-xl text-xs font-bold text-[#2A3833] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                disabled
+                aria-label="Google SSO no disponible"
+                title="Google SSO no disponible"
+                className="py-2.5 px-3 bg-[#F1F3F4] border border-[#D8E1E8] rounded-xl text-xs font-bold text-[#8A9591] flex items-center justify-center gap-2 transition-all cursor-not-allowed opacity-65 grayscale"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -217,8 +264,10 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => router.push("/dashboard/investment")}
-                className="py-2.5 px-3 bg-[#EEF2F6] hover:bg-[#E2E8F0] border border-[#D8E1E8] rounded-xl text-xs font-bold text-[#2A3833] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                disabled
+                aria-label="Passkey / Biométrica no disponible"
+                title="Passkey / Biométrica no disponible"
+                className="py-2.5 px-3 bg-[#F1F3F4] border border-[#D8E1E8] rounded-xl text-xs font-bold text-[#8A9591] flex items-center justify-center gap-2 transition-all cursor-not-allowed opacity-65 grayscale"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#059669]">
                   <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
@@ -243,16 +292,20 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => handleLoginAs("inversionista")}
-                  className="py-2.5 px-3 rounded-xl bg-[#E8F5E9] hover:bg-[#D4EDDA] text-[#006244] border border-[#CCE3D8] text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  disabled
+                  aria-label="Demo Inversionista no disponible"
+                  title="Demo Inversionista no disponible"
+                  className="py-2.5 px-3 rounded-xl bg-[#F1F3F4] text-[#8A9591] border border-[#D8E1E8] text-xs font-bold transition-all text-center cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm opacity-65 grayscale"
                 >
                   <span>💼</span>
                   <span>Demo Inversionista</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleLoginAs("ganadero")}
-                  className="py-2.5 px-3 rounded-xl bg-[#E8F5E9] hover:bg-[#D4EDDA] text-[#006244] border border-[#CCE3D8] text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  disabled
+                  aria-label="Demo Ganadero no disponible"
+                  title="Demo Ganadero no disponible"
+                  className="py-2.5 px-3 rounded-xl bg-[#F1F3F4] text-[#8A9591] border border-[#D8E1E8] text-xs font-bold transition-all text-center cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm opacity-65 grayscale"
                 >
                   <span>🤠</span>
                   <span>Demo Ganadero</span>
@@ -264,13 +317,9 @@ export default function LoginPage() {
           {/* Footer de la tarjeta con links de registro */}
           <div className="mt-7 pt-5 border-t border-[#EEF2F0] flex flex-wrap items-center justify-between text-xs text-[#6A7873] gap-2">
             <span>¿No tienes cuenta aún?</span>
-            <div className="flex items-center gap-2 font-bold text-[#006244]">
-              <Link href="/register/inversionista" className="hover:underline">
-                Registrarme como Inversionista
-              </Link>
-              <span>•</span>
-              <Link href="/register/ganadero" className="hover:underline">
-                Registrarme como Ganadero
+            <div className="font-bold text-[#006244]">
+              <Link href="/register" className="hover:underline">
+                Registrarme
               </Link>
             </div>
           </div>
