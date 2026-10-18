@@ -7,7 +7,8 @@ import {
   signTransaction,
 } from "@stellar/freighter-api";
 
-const networkName = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "testnet";
+const networkName = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "TESTNET";
+const expectedNetwork = networkName.trim().toUpperCase();
 const rpcUrl =
   process.env.NEXT_PUBLIC_STELLAR_RPC_URL ??
   "https://soroban-testnet.stellar.org";
@@ -52,7 +53,12 @@ export async function connectFreighter(): Promise<string> {
     throw new Error(access.error?.message ?? "Freighter no autorizó la wallet.");
   }
   const network = await getNetwork();
-  if (network.error || network.network !== networkName) {
+  console.log("Freighter network:", network);
+  if (
+    network.error ||
+    network.network.trim().toUpperCase() !== expectedNetwork ||
+    network.networkPassphrase !== stellarConfig.networkPassphrase
+  ) {
     throw new Error(`Freighter debe estar conectada a ${networkName}.`);
   }
   return access.address;

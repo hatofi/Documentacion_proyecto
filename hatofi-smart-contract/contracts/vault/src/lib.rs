@@ -110,7 +110,7 @@ impl CattleInvestmentContract {
             || farm_id == 0
             || target_amount <= 0
             || price_per_share <= 0
-            || estimated_roi_percentage <= 0
+            || estimated_roi_percentage < 0
             || duration_months == 0
             || funding_start_date == 0
         {

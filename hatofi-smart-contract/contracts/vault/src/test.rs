@@ -55,6 +55,29 @@ fn creates_batch_with_model_aligned_data() {
 }
 
 #[test]
+fn accepts_batch_with_zero_roi() {
+    let (env, client, farmer, _) = setup();
+
+    client.create_batch(
+        &1,
+        &1,
+        &String::from_str(&env, "BATCH-001"),
+        &String::from_str(&env, "Lote de prueba"),
+        &String::from_str(&env, "Sin ROI estimado"),
+        &symbol_short!("CEBA_INT"),
+        &farmer,
+        &1_000_000_000,
+        &100_000_000,
+        &0,
+        &18,
+        &1_700_000_000,
+        &0,
+    );
+
+    assert_eq!(client.get_batch(&1).estimated_roi_percentage, 0);
+}
+
+#[test]
 fn invests_and_accumulates_by_investor() {
     let (env, client, farmer, token_id) = setup();
     create_batch(&client, &env, &farmer);

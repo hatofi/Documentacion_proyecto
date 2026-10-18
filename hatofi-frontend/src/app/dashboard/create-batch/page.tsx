@@ -12,7 +12,14 @@ const categoryOptions: Array<{ value: BatchCategory; label: string }> = [
 ];
 
 export default function CreateBatchPage() {
-  const { farms, loading, error, creatingBatch, handleCreateBatch } = useMyFarm();
+  const {
+    farms,
+    loading,
+    error,
+    batchError,
+    creatingBatch,
+    handleCreateBatch,
+  } = useMyFarm();
   const [farmId, setFarmId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -21,12 +28,13 @@ export default function CreateBatchPage() {
   const [durationMonths, setDurationMonths] = useState("");
   const [fundingStartDate, setFundingStartDate] = useState("");
   const [message, setMessage] = useState("");
+  const stellarEnabled = process.env.NEXT_PUBLIC_STELLAR_ENABLED === "true";
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage("");
     try {
-      const farmerAddress = await connectFreighter();
+      const farmerAddress = stellarEnabled ? await connectFreighter() : undefined;
       await handleCreateBatch({
         title: title.trim(),
         description: description.trim() || undefined,
@@ -36,7 +44,7 @@ export default function CreateBatchPage() {
         funding_start_date: `${fundingStartDate}T00:00:00`,
         farm_id: Number(farmId || farms[0]?.id),
         price_per_share: 1,
-        estimated_roi_percentage: 0,
+        estimated_roi_percentage: 12,
         farmer_address: farmerAddress,
       });
       setTitle("");
@@ -45,9 +53,17 @@ export default function CreateBatchPage() {
       setTargetAmount("");
       setDurationMonths("");
       setFundingStartDate("");
-      setMessage("Lote creado en la API y registrado en Stellar correctamente.");
-    } catch {
-      // El hook expone el error de la API en la vista.
+      setMessage(
+        stellarEnabled
+          ? "Lote creado en la API y registrado en Stellar correctamente."
+          : "Lote creado correctamente en la API.",
+      );
+    } catch (submitError) {
+      setMessage(
+        submitError instanceof Error
+          ? submitError.message
+          : "No fue posible crear el lote.",
+      );
     }
   };
 
@@ -66,7 +82,11 @@ export default function CreateBatchPage() {
         <label className="text-sm font-bold text-[#33443E]">Meta de financiación<input required min="1" step="0.01" type="number" value={targetAmount} onChange={(event) => setTargetAmount(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2.5 font-normal outline-none focus:border-[#006244]" /></label>
         <label className="text-sm font-bold text-[#33443E]">Duración (meses)<input required min="1" type="number" value={durationMonths} onChange={(event) => setDurationMonths(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2.5 font-normal outline-none focus:border-[#006244]" /></label>
         <label className="text-sm font-bold text-[#33443E]">Inicio de financiación<input required type="date" value={fundingStartDate} onChange={(event) => setFundingStartDate(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2.5 font-normal outline-none focus:border-[#006244]" /></label>
-        {message && <p className="sm:col-span-2 rounded-xl bg-[#E8F5EE] p-3 text-xs font-semibold text-[#006244]">{message}</p>}
+        {(message || batchError) && (
+          <p className={`sm:col-span-2 rounded-xl p-3 text-xs font-semibold ${batchError || !message.startsWith("Lote creado") ? "bg-red-50 text-red-700" : "bg-[#E8F5EE] text-[#006244]"}`}>
+            {batchError || message}
+          </p>
+        )}
         <div className="flex items-end justify-end sm:col-span-2"><button disabled={creatingBatch} type="submit" className="w-full rounded-xl bg-[#063B32] px-5 py-3 text-sm font-bold text-white hover:bg-[#042822] disabled:opacity-60 sm:w-auto">{creatingBatch ? "Guardando..." : "Crear lote"}</button></div>
       </form>
     </div>
