@@ -25,8 +25,10 @@ function getBatchImage(batchId: number) {
   return batchImages[batchId % batchImages.length];
 }
 
-function getMinimumInvestment(batch: Batch) {
-  return Math.max(batch.price_per_share, 100);
+const minimumInvestment = 0.01;
+
+function getRemainingAmount(batch: Batch) {
+  return Math.max(0, Number((batch.target_amount - batch.collected_amount).toFixed(2)));
 }
 
 type MetricIconName = "target" | "trend" | "batches" | "dividends";
@@ -75,7 +77,7 @@ export default function InvestmentPage() {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
-  const [amountUsdc, setAmountUsdc] = useState(1000);
+  const [amountUsdc, setAmountUsdc] = useState(minimumInvestment);
   const [investmentSubmitting, setInvestmentSubmitting] = useState(false);
 
   useEffect(() => {
@@ -118,17 +120,27 @@ export default function InvestmentPage() {
   };
 
   const openInvestment = (batch: Batch) => {
+    if (getRemainingAmount(batch) < minimumInvestment) return;
     setSelectedBatch(batch);
-    setAmountUsdc(getMinimumInvestment(batch));
+    setAmountUsdc(minimumInvestment);
   };
 
   const simulation = selectedBatch
     ? amountUsdc * (selectedBatch.estimated_roi_percentage / 100) * (selectedBatch.duration_months / 12)
     : 0;
+  const maximumInvestment = selectedBatch ? getRemainingAmount(selectedBatch) : minimumInvestment;
 
   const confirmInvestment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedBatch || investmentSubmitting) return;
+    if (
+      !Number.isFinite(amountUsdc) ||
+      amountUsdc < minimumInvestment ||
+      amountUsdc > maximumInvestment
+    ) {
+      showToast("Ingresa un monto entre $0.01 y el saldo disponible del lote.");
+      return;
+    }
     setInvestmentSubmitting(true);
     try {
       const walletAddress = await connectFreighter();
@@ -232,12 +244,12 @@ export default function InvestmentPage() {
                     <div className="grid grid-cols-3 rounded-xl bg-[#F5F8F6] p-3 text-center text-xs">
                       <div><span className="block text-[#62736C]">Estado</span><strong className="mt-1 block text-[#0D1F1B]">En financiación</strong></div>
                       <div><span className="block text-[#62736C]">Plazo</span><strong className="mt-1 block text-[#0D1F1B]">{batch.duration_months} meses</strong></div>
-                      <div><span className="block text-[#62736C]">Mínimo</span><strong className="mt-1 block text-[#0D1F1B]">${formatMoney(getMinimumInvestment(batch))}</strong></div>
+                      <div><span className="block text-[#62736C]">Mínimo</span><strong className="mt-1 block text-[#0D1F1B]">$0.01</strong></div>
                     </div>
                     <div className="mt-4 flex justify-between text-sm font-bold text-[#0D1F1B]"><span>Recaudado: ${formatMoney(batch.collected_amount)} USDC</span><span className="text-[#006244]">{progress}%</span></div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E8EEEB]"><div className="h-full rounded-full bg-[#10B981]" style={{ width: `${progress}%` }} /></div>
                     <p className="mt-2 text-xs text-[#62736C]">Meta: ${formatMoney(batch.target_amount)} USDC</p>
-                    <button type="button" onClick={() => openInvestment(batch)} className="mt-4 w-full rounded-xl bg-[#063B32] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#042822]">Invertir en este lote →</button>
+                    <button type="button" onClick={() => openInvestment(batch)} disabled={getRemainingAmount(batch) < minimumInvestment} className="mt-4 w-full rounded-xl bg-[#063B32] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#042822] disabled:cursor-not-allowed disabled:bg-gray-400">Invertir en este lote →</button>
                   </div>
                 </article>
               );
@@ -252,8 +264,36 @@ export default function InvestmentPage() {
             <div className="flex items-start justify-between"><div><span className="text-[10px] font-bold uppercase tracking-wider text-[#10B981]">Fondeo colectivo</span><h2 className="text-lg font-extrabold text-[#0D1F1B]">{selectedBatch.title}</h2></div><button type="button" onClick={() => setSelectedBatch(null)} className="text-gray-400">✕</button></div>
             <div className="mt-4 space-y-1 rounded-xl border border-gray-200 bg-[#F8FAF9] p-3 text-xs"><div className="flex justify-between"><span className="text-gray-500">Código:</span><strong>{selectedBatch.code}</strong></div><div className="flex justify-between"><span className="text-gray-500">ROI:</span><strong className="text-[#059669]">{selectedBatch.estimated_roi_percentage}%</strong></div><div className="flex justify-between"><span className="text-gray-500">Duración:</span><strong>{selectedBatch.duration_months} meses</strong></div></div>
             <form onSubmit={confirmInvestment} className="mt-4 space-y-4">
-              <label className="block text-xs font-bold text-gray-700">Monto a depositar (USDC)<span className="float-right text-base text-[#006244]">${formatMoney(amountUsdc)}</span><input type="range" min={getMinimumInvestment(selectedBatch)} max={Math.max(selectedBatch.target_amount, getMinimumInvestment(selectedBatch))} step={getMinimumInvestment(selectedBatch)} value={amountUsdc} onChange={(event) => setAmountUsdc(Number(event.target.value))} className="mt-3 w-full accent-[#006244]" /></label>
-              <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-xs text-[#065F46]">Rendimiento estimado: <strong>+${formatMoney(simulation)} USDC</strong></div>
+              <label className="block text-xs font-bold text-gray-700" htmlFor="investment-amount">
+                Monto a depositar (USDC)
+                <span className="float-right text-base text-[#006244]">${amountUsdc.toFixed(2)}</span>
+                <input
+                  id="investment-amount"
+                  type="number"
+                  min={minimumInvestment}
+                  max={maximumInvestment}
+                  step="0.01"
+                  value={amountUsdc}
+                  onChange={(event) => setAmountUsdc(Number(event.target.value))}
+                  className="mt-3 w-full rounded-xl border border-[#CBD8D2] px-3 py-2 text-sm font-semibold text-[#0D1F1B] outline-none focus:border-[#006244] focus:ring-2 focus:ring-[#D6F5E1]"
+                  required
+                />
+                <input
+                  aria-label="Seleccionar monto de inversión"
+                  type="range"
+                  min={minimumInvestment}
+                  max={maximumInvestment}
+                  step="0.01"
+                  value={Math.min(Math.max(amountUsdc, minimumInvestment), maximumInvestment)}
+                  onChange={(event) => setAmountUsdc(Number(event.target.value))}
+                  className="mt-3 w-full accent-[#006244]"
+                />
+                <span className="mt-1 flex justify-between text-[11px] font-normal text-[#62736C]">
+                  <span>Mínimo: $0.01</span>
+                  <span>Disponible: ${maximumInvestment.toFixed(2)}</span>
+                </span>
+              </label>
+              <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-xs text-[#065F46]">Rendimiento estimado: <strong>+${simulation.toFixed(2)} USDC</strong></div>
               <div className="flex justify-end gap-2"><button type="button" onClick={() => setSelectedBatch(null)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="submit" disabled={investmentSubmitting} className="rounded-xl bg-[#063B32] px-5 py-2.5 text-xs font-bold text-white disabled:cursor-wait disabled:opacity-60">{investmentSubmitting ? "Confirmando en Stellar..." : "Confirmar inversión en Stellar"}</button></div>
             </form>
           </div>

@@ -42,6 +42,8 @@ This repository uses the recommended structure for a Soroban project:
 - Frontend libraries can be added to the top-level directory as well. If you initialized this project with a frontend template via `--frontend-template` you will have those files already included.
 
 
+# Deploy Paso a paso
+
 # Deploy result
 https://stellar.expert/explorer/testnet/tx/e59cc8b6031ae43297bd53da9ebe22639899225197e7be4855e3ece7fba7a589
 https://lab.stellar.org/r/testnet/contract/CCGGBMG72KCXUXAJCXYKCZD6K7MPTZNCTJP42PTLCUP447AKHHAFL6UX

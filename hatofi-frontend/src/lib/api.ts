@@ -1,12 +1,8 @@
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 function authHeaders(): HeadersInit {
-  const rawSession = sessionStorage.getItem("hatofi_session");
-  if (!rawSession) return {};
-  const session = JSON.parse(rawSession) as { access_token?: string };
-  return session.access_token
-    ? { Authorization: `Bearer ${session.access_token}` }
-    : {};
+  const accessToken = sessionStorage.getItem("hatofi_access_token");
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
 }
 
 export async function registerInvestment(input: {

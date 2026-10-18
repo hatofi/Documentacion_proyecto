@@ -208,6 +208,18 @@ impl CattleInvestmentContract {
             .get(&DataKey::Investment(batch_id, investor))
             .unwrap_or(0)
     }
+
+    // eliminar antes de ir a produccion
+    pub fn set_token(env: Env, token_address: Address) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(Error::Unauthorized)?;
+        admin.require_auth();
+        set_persistent(&env, &DataKey::Token, &token_address);
+        Ok(())
+    }
 }
 
 fn get_required<V>(
