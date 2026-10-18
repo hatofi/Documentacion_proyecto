@@ -217,7 +217,8 @@ impl CattleInvestmentContract {
             .get(&DataKey::Admin)
             .ok_or(Error::Unauthorized)?;
         admin.require_auth();
-        set_persistent(&env, &DataKey::Token, &token_address);
+        env.storage().instance().set(&DataKey::Token, &token_address);
+        extend_instance(&env);
         Ok(())
     }
 }

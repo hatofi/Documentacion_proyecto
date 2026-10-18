@@ -94,6 +94,21 @@ fn invests_and_accumulates_by_investor() {
 }
 
 #[test]
+fn updates_token_used_by_investments() {
+    let (env, client, farmer, token_id) = setup();
+    create_batch(&client, &env, &farmer);
+
+    let replacement_token = env.register_stellar_asset_contract(Address::generate(&env));
+    client.set_token(&replacement_token);
+
+    let investor = Address::generate(&env);
+    token::StellarAssetClient::new(&env, &replacement_token).mint(&investor, &10);
+    client.invest(&investor, &1, &10);
+
+    assert_eq!(client.get_investment(&1, &investor), 10);
+}
+
+#[test]
 fn reaching_target_marks_batch_funded() {
     let (env, client, farmer, token_id) = setup();
     create_batch(&client, &env, &farmer);
