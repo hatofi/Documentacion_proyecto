@@ -36,13 +36,10 @@
               "function_name": "create_batch",
               "args": [
                 {
-                  "u64": "1"
+                  "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                 },
                 {
                   "u64": "1"
-                },
-                {
-                  "string": "BATCH-001"
                 },
                 {
                   "string": "Lote de prueba"
@@ -116,7 +113,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                 },
                 {
-                  "u64": "1"
+                  "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                 },
                 {
                   "i128": "1000000000"
@@ -255,7 +252,7 @@
                     "symbol": "Batch"
                   },
                   {
-                    "u64": "1"
+                    "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                   }
                 ]
               },
@@ -275,7 +272,7 @@
                       "symbol": "code"
                     },
                     "val": {
-                      "string": "BATCH-001"
+                      "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                     }
                   },
                   {
@@ -344,14 +341,6 @@
                   },
                   {
                     "key": {
-                      "symbol": "id"
-                    },
-                    "val": {
-                      "u64": "1"
-                    }
-                  },
-                  {
-                    "key": {
                       "symbol": "price_per_share"
                     },
                     "val": {
@@ -403,7 +392,7 @@
                     "symbol": "Investment"
                   },
                   {
-                    "u64": "1"
+                    "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"

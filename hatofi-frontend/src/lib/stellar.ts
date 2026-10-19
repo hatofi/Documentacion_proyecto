@@ -73,11 +73,14 @@ export async function currentFreighterAddress(): Promise<string | null> {
 
 export async function investOnChain(
   investor: string,
-  batchId: number,
+  batchCode: string,
   amount: string,
 ): Promise<string> {
   if (!stellarConfig.contractId) {
     throw new Error("Falta NEXT_PUBLIC_STELLAR_CONTRACT_ID.");
+  }
+  if (!batchCode) {
+    throw new Error("Falta el código del lote para invertir en Stellar.");
   }
   const atomicAmount = toAtomicAmount(amount);
   if (atomicAmount <= BigInt(0)) {
@@ -88,7 +91,9 @@ export async function investOnChain(
   const operation = new StellarSdk.Contract(stellarConfig.contractId).call(
     "invest",
     StellarSdk.Address.fromString(investor).toScVal(),
-    StellarSdk.nativeToScVal(batchId, { type: "u64" }),
+    // El lote se identifica en la blockchain por su código (uuid4), no por el id
+    // de la base de datos, para que siga siendo localizable tras un reinicio.
+    StellarSdk.nativeToScVal(batchCode, { type: "string" }),
     StellarSdk.nativeToScVal(atomicAmount, { type: "i128" }),
   );
   const transaction = new StellarSdk.TransactionBuilder(account, {

@@ -146,7 +146,7 @@ export default function InvestmentPage() {
       const walletAddress = await connectFreighter();
       const transactionHash = await investOnChain(
         walletAddress,
-        selectedBatch.id,
+        selectedBatch.code,
         amountUsdc.toFixed(2),
       );
       await registerInvestment({

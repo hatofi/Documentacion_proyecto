@@ -26,16 +26,22 @@ const LIFETIME_THRESHOLD: u32 = 29 * DAY_IN_LEDGERS; // 29 días en ledgers (5 s
 pub enum DataKey { // es un enum que define las claves de datos utilizadas en el contrato inteligente para almacenar información en el almacenamiento persistente. Cada variante del enum representa un tipo específico de dato que se puede almacenar, como la dirección del administrador, la dirección del token, la información de un lote de inversión y la cantidad invertida por un inversor en un lote específico.
     Admin, // admin: Representa la dirección del administrador del contrato inteligente.
     Token, // token: Representa la dirección del token utilizado en el contrato inteligente.
-    Batch(u64), // batch: Representa la información de un lote de inversión, aqui solo se almacena el id del lote de inversión.
-    Investment(u64, Address), // investment: Representa la cantidad invertida por un inversor en un lote específico, aqui se almacena el id del lote de inversión y la dirección del inversor.
+    // batch: Representa la información de un lote de inversión. Se indexa por el código
+    // del lote (uuid4) y no por el id autoincremental de la base de datos, para que el
+    // lote siga siendo localizable aunque se reinicie o migre la base de datos.
+    Batch(String),
+    // investment: Representa la cantidad invertida por un inversor en un lote específico,
+    // aqui se almacena el código del lote y la dirección del inversor.
+    Investment(String, Address),
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BatchInfo {
-    pub id: u64,
-    pub farm_id: u64,
+    // Identificador estable del lote (uuid4 generado en la base de datos). Es la clave
+    // de almacenamiento y la que se usa para consultar y actualizar el lote.
     pub code: String,
+    pub farm_id: u64,
     pub title: String,
     pub description: String,
     pub category: Symbol,
@@ -85,9 +91,8 @@ impl CattleInvestmentContract {
 
     pub fn create_batch(
         env: Env,
-        batch_id: u64,
-        farm_id: u64,
         code: String,
+        farm_id: u64,
         title: String,
         description: String,
         category: Symbol,
@@ -106,7 +111,7 @@ impl CattleInvestmentContract {
             .ok_or(Error::Unauthorized)?;
         admin.require_auth();
 
-        if batch_id == 0
+        if code.is_empty()
             || farm_id == 0
             || target_amount <= 0
             || price_per_share <= 0
@@ -119,15 +124,14 @@ impl CattleInvestmentContract {
         if env
             .storage()
             .persistent()
-            .has(&DataKey::Batch(batch_id))
+            .has(&DataKey::Batch(code.clone()))
         {
             return Err(Error::BatchAlreadyExists);
         }
 
         let batch = BatchInfo {
-            id: batch_id,
+            code: code.clone(),
             farm_id,
-            code,
             title,
             description,
             category,
@@ -142,18 +146,18 @@ impl CattleInvestmentContract {
             status: symbol_short!("FUNDING"),
         };
 
-        set_persistent(&env, &DataKey::Batch(batch_id), &batch); // almacena la información del lote en el almacenamiento persistente del contrato
+        set_persistent(&env, &DataKey::Batch(code), &batch); // almacena la información del lote en el almacenamiento persistente del contrato
         Ok(())
     }
 
-    pub fn get_batch(env: Env, batch_id: u64) -> Result<BatchInfo, Error> {
-        get_required(&env, &DataKey::Batch(batch_id), Error::BatchNotFound)
+    pub fn get_batch(env: Env, code: String) -> Result<BatchInfo, Error> {
+        get_required(&env, &DataKey::Batch(code), Error::BatchNotFound)
     }
 
     pub fn invest(
         env: Env,
         investor: Address,
-        batch_id: u64,
+        code: String,
         amount: i128,
     ) -> Result<(), Error> {
         investor.require_auth();
@@ -162,7 +166,7 @@ impl CattleInvestmentContract {
         }
 
         let mut batch: BatchInfo =
-            get_required(&env, &DataKey::Batch(batch_id), Error::BatchNotFound)?;
+            get_required(&env, &DataKey::Batch(code.clone()), Error::BatchNotFound)?;
         if batch.status != symbol_short!("FUNDING") {
             return Err(Error::NotFunding);
         }
@@ -189,9 +193,9 @@ impl CattleInvestmentContract {
         if new_total == batch.target_amount {
             batch.status = symbol_short!("FUNDED");
         }
-        set_persistent(&env, &DataKey::Batch(batch_id), &batch);
+        set_persistent(&env, &DataKey::Batch(code.clone()), &batch);
 
-        let investment_key = DataKey::Investment(batch_id, investor);
+        let investment_key = DataKey::Investment(code, investor);
         let previous: i128 = env
             .storage()
             .persistent()
@@ -202,10 +206,10 @@ impl CattleInvestmentContract {
         Ok(())
     }
 
-    pub fn get_investment(env: Env, batch_id: u64, investor: Address) -> i128 {
+    pub fn get_investment(env: Env, code: String, investor: Address) -> i128 {
         env.storage()
             .persistent()
-            .get(&DataKey::Investment(batch_id, investor))
+            .get(&DataKey::Investment(code, investor))
             .unwrap_or(0)
     }
 

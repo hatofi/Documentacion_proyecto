@@ -36,13 +36,10 @@
               "function_name": "create_batch",
               "args": [
                 {
-                  "u64": "1"
+                  "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                 },
                 {
                   "u64": "1"
-                },
-                {
-                  "string": "BATCH-001"
                 },
                 {
                   "string": "Lote de prueba"
@@ -209,7 +206,7 @@
                     "symbol": "Batch"
                   },
                   {
-                    "u64": "1"
+                    "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                   }
                 ]
               },
@@ -229,7 +226,7 @@
                       "symbol": "code"
                     },
                     "val": {
-                      "string": "BATCH-001"
+                      "string": "BATCH-3F2504E0-4F89-41D3-9A0C-0305E82C3301"
                     }
                   },
                   {
@@ -294,14 +291,6 @@
                     },
                     "val": {
                       "u64": "1700000000"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "id"
-                    },
-                    "val": {
-                      "u64": "1"
                     }
                   },
                   {
